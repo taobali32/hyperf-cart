@@ -362,6 +362,7 @@ class Cart
     public function flush()
     {
         $this->delSid = array_keys($this->goods);
+        $this->goods = [];
 
         return $this->store();
     }
