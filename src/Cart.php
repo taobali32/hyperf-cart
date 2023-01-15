@@ -160,8 +160,6 @@ class Cart
             'disabled_reason'         =>  $v['disabled_reason'] ?? 0,
         ];
 
-        $model::query()->create($ins);
-
         $create = $model::query()->create($ins);
 
         return $create->id;
