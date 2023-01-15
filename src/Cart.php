@@ -92,30 +92,76 @@ class Cart
     {
         //添加商品支持多商品添加
         $options = isset($data['options']) ? $data['options'] : '';
+        //生成维一ID用于处理相同商品有不同属性时
         $sid     = md5($data['id'].serialize($options));
 
-        //生成维一ID用于处理相同商品有不同属性时
-        if (isset($this->goods[$sid])) {
-            //如果数量为0删除商品
-            if ($data['num'] == 0) {
-                unset($this->goods[$sid]);
-                $this->delSid[] = $sid;
+        if (empty($this->goods)){
+            $data['sid']                = $sid;
+            $this->goods[$sid]          = $data;
+            $this->goods[$sid]['total'] = $data['num'] * $data['price'];
+        }else{
+            if (isset($this->goods[$sid])) {
+                //如果数量为0删除商品
+                if ($data['num'] == 0) {
+                    unset($this->goods[$sid]);
+                    $this->delSid[] = $sid;
+                } else {
+
+                    //已经存在相同商品时增加商品数量
+                    $this->goods[$sid]['num']   = $this->goods[$sid]['num']
+                        + $data['num'];
+                    $this->goods[$sid]['total'] = $this->goods[$sid]['num']
+                        * $this->goods[$sid]['price'];
+
+                    $this->goods[$sid]['sid'] = $sid;
+                }
             } else {
-                //已经存在相同商品时增加商品数量
-                $this->goods[$sid]['num']   = $this->goods[$sid]['num']
-                    + $data['num'];
-                $this->goods[$sid]['total'] = $this->goods[$sid]['num']
-                    * $this->goods[$sid]['price'];
-            }
-        } else {
-            if ($data['num'] != 0) {
-                $this->goods[$sid]          = $data;
-                $this->goods[$sid]['total'] = $data['num'] * $data['price'];
+                if ($data['num'] != 0) {
+                    $data['sid']                = $sid;
+                    $this->goods[$sid]          = $data;
+                    $this->goods[$sid]['total'] = $data['num'] * $data['price'];
+                }
             }
         }
-
         return $this->store();
     }
+
+
+    public function insDatabases($v)
+    {
+        /**
+         * @var Model $model
+         */
+        $model = new (config('cart.model'));
+
+        $options = [];
+        if (isset($v['options'])) $options = $v['options'];
+
+        //  添加
+        $ins = [
+            'user_id'   =>  $this->user_id,
+            'product_id'    =>  $v['id'],
+            'name'      =>  $v['name'] ?? '',
+            'price'      =>  $v['price'] ?? '',
+            'merchant_id'      =>  $v['merchant_id'] ?? 0,
+            'options'      =>  jtarArrToJson($options),
+            'images'      =>  $v['images'] ?? '',
+            'sku_id'      =>  $v['sku_id'] ?? 0,
+            'cart_id'      =>  $v['cart_id'] ?? 0,
+            'card_type'      =>  $v['card_type'] ?? 0,
+            'total'         =>  $v['total'] ?? 0,
+            'sid'         =>  $v['sid'] ?? 0,
+            'disabled'         =>  $v['disabled'] ?? 0,
+            'disabled_reason'         =>  $v['disabled_reason'] ?? 0,
+        ];
+
+        $model::query()->create($ins);
+
+        $create = $model::query()->create($ins);
+
+        return $create->id;
+    }
+
 
     /**
      * 设置商品
@@ -144,7 +190,7 @@ class Cart
 
                 $arr = [];
                 foreach ($goods as $k => $v){
-                    $arr[$v->sid] = $v;
+                    $arr[$v['sid']] = $v;
                 }
 
                 return $arr;
@@ -154,7 +200,7 @@ class Cart
         if ($mode == 1){
             $goodCache = jtarGetRedis()->get($this->getPrefix());
 
-            if ($goodCache) $goods = jtarJsonToArr($goods);
+            if ($goodCache) $goods = jtarJsonToArr($goodCache);
 
             if (isset($goods['goods'])){
                 $goods = $goods['goods'];
@@ -203,7 +249,11 @@ class Cart
      */
     public function getAllData(): mixed
     {
-        return $this->calculate();
+        $data = $this->calculate();
+
+        $data['goods'] = array_values($data['goods']);
+
+        return $data;
     }
 
 
@@ -213,6 +263,11 @@ class Cart
     }
 
 
+    /**
+     * 保存
+     *
+     * @return mixed
+     */
     /**
      * 保存
      *
@@ -243,30 +298,13 @@ class Cart
                         'num'       =>  $v['num'],
                         'total'     =>  $v['num'] * $v['price']
                     ]);
+                }else{
+                    $id = $this->insDatabases($v);
+                    $this->goods[$v['sid']]['id'] = $id;
                 }
             }else{
-                $options = [];
-                if (isset($v['options'])) $options = $v['options'];
-
-                //  添加
-                $ins = [
-                    'user_id'   =>  $this->user_id,
-                    'product_id'    =>  $v['id'],
-                    'name'      =>  $v['name'] ?? '',
-                    'price'      =>  $v['price'] ?? '',
-                    'merchant_id'      =>  $v['merchant_id'] ?? 0,
-                    'options'      =>  jtarArrToJson($options),
-                    'images'      =>  $v['images'] ?? '',
-                    'sku_id'      =>  $v['sku_id'] ?? 0,
-                    'cart_id'      =>  $v['cart_id'] ?? 0,
-                    'card_type'      =>  $v['card_type'] ?? 0,
-                    'total'         =>  $v['total'] ?? 0,
-                    'sid'         =>  $v['sid'] ?? 0,
-                    'disabled'         =>  $v['disabled'] ?? 0,
-                    'disabled_reason'         =>  $v['disabled_reason'] ?? 0,
-                ];
-
-                $model::query()->create($ins);
+                $id = $this->insDatabases($v);
+                $this->goods[$v['sid']]['id'] = $id;
             }
         }
 
@@ -282,7 +320,7 @@ class Cart
     public function getTotalNums() :int
     {
         $rows = 0;
-        foreach ($this->goods as $v) {
+        foreach ($this->goods as $k => $v) {
             $rows += $v['num'];
         }
 
@@ -295,7 +333,7 @@ class Cart
     public function getTotalPrice(): float|int
     {
         $total = 0;
-        foreach ($this->goods as $v) {
+        foreach ($this->goods as $k => $v) {
             $total += $v['price'] * $v['num'];
         }
 
@@ -305,13 +343,13 @@ class Cart
     /**
      * 删除购物车
      *
-     * @param int $sid 商品SID编号
+     * @param string $sid 商品SID编号
      *
      * @throws \Exception
      */
     public function del($sid)
     {
-        $this->delSid[$sid];
+        $this->delSid[] = $sid;
 
         unset($this->goods[$sid]);
 
@@ -323,13 +361,6 @@ class Cart
      */
     public function flush()
     {
-        /**
-         * @var Model $model
-         */
-        $model = new (config('cart.model'));
-
-        $model::query()->where('user_id',$this->user_id)->delete();
-
         $this->delSid = array_keys($this->goods);
 
         return $this->store();
