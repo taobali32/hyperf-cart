@@ -57,3 +57,30 @@
  */
 //$cart = new Cart(1);
 //return $this->success('购物车数据', $cart->getAllData());
+
+
+// 更新
+/**
+ *         $data = [
+'sid' => '6d7470ef575d9af07c92d7e8ff140d42',// 唯一 sid，添加购物车时自动生成
+'num' => 88
+];
+
+$cart = new Cart(1);
+$cart->update($data);
+ */
+
+
+// 删除单个
+
+/**
+ *         $cart = new Cart(1);
+$cart->del('6d7470ef575d9af07c92d7e8ff140d42');
+ */
+
+//  删除全部
+
+/**
+$cart = new Cart(1);
+$cart->flush();
+ */
