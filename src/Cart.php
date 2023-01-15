@@ -104,6 +104,9 @@ class Cart
             $data['sid']                = $sid;
             $this->goods[$sid]          = $data;
             $this->goods[$sid]['total'] = $data['num'] * $data['price'];
+            $this->goods[$sid]['type']  = 'add';
+
+
         }else{
             if (isset($this->goods[$sid])) {
                 //如果数量为0删除商品
@@ -125,6 +128,8 @@ class Cart
                     $data['sid']                = $sid;
                     $this->goods[$sid]          = $data;
                     $this->goods[$sid]['total'] = $data['num'] * $data['price'];
+                    $this->goods[$sid]['type']  = 'add';
+
                 }
             }
         }
@@ -265,12 +270,6 @@ class Cart
         jtarGetRedis()->set($this->getPrefix(), jtarArrToJson($this->calculate()));
     }
 
-
-    /**
-     * 保存
-     *
-     * @return mixed
-     */
     /**
      * 保存
      *
@@ -290,24 +289,25 @@ class Cart
 
         foreach ($this->goods as $k => $v){
             //  说明是更新
-            if (isset($v['sid'])){
-                $find = $model::query()->where('user_id',$this->user_id)
-                    ->where('product_id',$v['id'])
-                    ->where('sid',$v['sid'])
-                    ->first();
-
-                if ($find){
-                    $find->update([
-                        'num'       =>  $v['num'],
-                        'total'     =>  $v['num'] * $v['price']
-                    ]);
-                }else{
-                    $id = $this->insDatabases($v);
-                    $this->goods[$v['sid']]['id'] = $id;
-                }
-            }else{
+            if (isset($v['sid']) && isset($v['type']) && $v['type'] = 'add'){
                 $id = $this->insDatabases($v);
                 $this->goods[$v['sid']]['id'] = $id;
+            }else{
+                if (isset($v['sid'])){
+                    $find = $model::query()->where('user_id',$this->user_id)
+                        ->where('product_id',$v['id'])
+                        ->where('sid',$v['sid'])
+                        ->first();
+
+                    if ($find){
+                        $find->update([
+                            'num'       =>  $v['num'],
+                            'price'     =>  $v['price'],
+                            'total'     =>  $v['num'] * $v['price']
+                        ]);
+                    }
+                }
+
             }
         }
 
