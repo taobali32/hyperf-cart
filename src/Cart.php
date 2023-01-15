@@ -96,6 +96,11 @@ class Cart
         $sid     = md5($data['id'].serialize($options));
 
         if (empty($this->goods)){
+
+            if ($data['num'] <= 0){
+                throw new \Exception('商品数量不能小于0');
+            }
+
             $data['sid']                = $sid;
             $this->goods[$sid]          = $data;
             $this->goods[$sid]['total'] = $data['num'] * $data['price'];
