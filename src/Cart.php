@@ -277,10 +277,10 @@ class Cart
             if (isset($temp['type'])) unset($temp['type']);
             $goods[$k] = $temp;
         }
-        
+
         $data['goods'] = $goods;
 
-        jtarGetRedis()->set($this->getPrefix(), jtarArrToJson($data);
+        jtarGetRedis()->set($this->getPrefix(), jtarArrToJson($data));
     }
 
     /**
