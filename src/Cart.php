@@ -212,7 +212,7 @@ class Cart
 
                 $arr = [];
                 foreach ($goods as $k => $v){
-                    $arr[$v->sid] = $v;
+                    $arr[$v['sid']] = $v;
                 }
 
                 return $arr;
