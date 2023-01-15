@@ -267,7 +267,20 @@ class Cart
 
     public function setCache(): void
     {
-        jtarGetRedis()->set($this->getPrefix(), jtarArrToJson($this->calculate()));
+        $data = $this->calculate();
+
+        $goods = $data['goods'];
+
+        foreach ($goods as $k => $v){
+            $temp = $v;
+
+            if (isset($temp['type'])) unset($temp['type']);
+            $goods[$k] = $temp;
+        }
+        
+        $data['goods'] = $goods;
+
+        jtarGetRedis()->set($this->getPrefix(), jtarArrToJson($data);
     }
 
     /**
